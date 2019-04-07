@@ -65,7 +65,7 @@ func primesToMap(primesMap map[int]rune) map[int]rune {
 
 func solution(n int, ciphertext []int) string {
 	var plaintext bytes.Buffer
-	cipherPrimes := make([]int, len(ciphertext) + 1)
+	cipherPrimes := make([]int, len(ciphertext)+1)
 	allPrimes := eratosthenes(n)
 	selectedPrimes := make(map[int]rune)
 	findDivisors := func(product int) (int, int) {
@@ -76,31 +76,29 @@ func solution(n int, ciphertext []int) string {
 		}
 		return 0, 0
 	}
-	var prev1, prev2 int
 
-	p1, p2 := findDivisors(ciphertext[0])
-	selectedPrimes[p1] = '.'
-	selectedPrimes[p2] = '.'
-	cipherPrimes[0] = p1
-	cipherPrimes[1] = p2
-	prev1 = p1
-	prev2 = p2
-
-	for i, product := range ciphertext[1:] {
-		p1, p2 := findDivisors(product)
-		if p1 == prev1 || p1== prev2{
-			cipherPrimes[i+2] = p2
+	for i, product := range ciphertext {
+		var p1, p2 int
+		if i > 0 {
+			if product%cipherPrimes[i] == 0 {
+				p1 = cipherPrimes[i]
+				p2 = product / cipherPrimes[i]
+			} else {
+				cipherPrimes[i], cipherPrimes[i-1] = cipherPrimes[i-1], cipherPrimes[i]
+			}
+			p1 = cipherPrimes[i]
+			p2 = product / cipherPrimes[i]
 		} else {
-			cipherPrimes[i+2] = p1
+			p1, p2 = findDivisors(product)
 		}
+		cipherPrimes[i] = p1
+		cipherPrimes[i+1] = p2
 		if _, ok := selectedPrimes[p1]; !ok {
 			selectedPrimes[p1] = '.'
 		}
 		if _, ok := selectedPrimes[p2]; !ok {
 			selectedPrimes[p2] = '.'
 		}
-		prev1 = p1
-		prev2 = p2
 	}
 	selectedPrimes = primesToMap(selectedPrimes)
 	for _, prime := range cipherPrimes {
