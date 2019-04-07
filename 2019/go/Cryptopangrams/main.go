@@ -3,13 +3,10 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"sort"
 )
 
 var alphas = [26]rune{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'}
-
-func getNextPrime(n int) int {
-	return 0
-}
 
 //isPangram checks if every character of the alphabet appears at least once in the string
 //Only checks input string with ALL CAPS
@@ -31,6 +28,7 @@ func isPangram(s string) bool {
 	return false
 }
 
+//Implements sieve of eratosthenes which finds a slice of all prime numbers up to and including n
 func eratosthenes(n int) []int {
 	integers := make([]bool, n+1)
 	for i := 2; i < n+1; i++ {
@@ -52,50 +50,63 @@ func eratosthenes(n int) []int {
 	return primes
 }
 
-//primeFactors finds the letters corresponding to the factors of the given input or error if none exists
-func primeFactorLetters(n int, primes []int) (rune, rune) {
-	for i := 0; i < len(primes); i++ {
-		for j := i + 1; j < len(primes); j++ {
-			if (primes[i] * primes[j]) == n {
-				return alphas[i], alphas[j]
+//Takes a map of primes and assigns alpha characters according to the order in sorted slice
+func primesToMap(primesMap map[int]rune) map[int]rune {
+	var tmp []int
+	for k := range primesMap {
+		tmp = append(tmp, k)
+	}
+	sort.Ints(tmp)
+	for i, v := range tmp {
+		primesMap[v] = alphas[i]
+	}
+	return primesMap
+}
+
+func solution(n int, ciphertext []int) string {
+	var plaintext bytes.Buffer
+	cipherPrimes := make([]int, len(ciphertext) + 1)
+	allPrimes := eratosthenes(n)
+	selectedPrimes := make(map[int]rune)
+	findDivisors := func(product int) (int, int) {
+		for _, prime := range allPrimes {
+			if product%prime == 0 {
+				return prime, product / prime
 			}
 		}
+		return 0, 0
 	}
-	return '.', '.'
-}
+	var prev1, prev2 int
 
-//Given a set of primes, check if ciphertext can be decrypted and returns string or empty  string
-func findPlaintext(primes []int, cipertext []int) string {
-	var plaintext bytes.Buffer
-	var checkValid func(idx int) bool
-	checkValid = func(idx int) bool {
-		if idx >= len(cipertext) {
-			return true
+	p1, p2 := findDivisors(ciphertext[0])
+	selectedPrimes[p1] = '.'
+	selectedPrimes[p2] = '.'
+	cipherPrimes[0] = p1
+	cipherPrimes[1] = p2
+	prev1 = p1
+	prev2 = p2
+
+	for i, product := range ciphertext[1:] {
+		p1, p2 := findDivisors(product)
+		if p1 == prev1 || p1== prev2{
+			cipherPrimes[i+2] = p2
+		} else {
+			cipherPrimes[i+2] = p1
 		}
-		letter1, letter2 := primeFactorLetters(cipertext[idx], primes)
-		if letter1 != '.' && checkValid(idx+1) {
-			plaintext.WriteRune(letter1)
-			plaintext.WriteRune(letter2)
+		if _, ok := selectedPrimes[p1]; !ok {
+			selectedPrimes[p1] = '.'
 		}
-		return false
+		if _, ok := selectedPrimes[p2]; !ok {
+			selectedPrimes[p2] = '.'
+		}
+		prev1 = p1
+		prev2 = p2
 	}
-	_ = checkValid(0)
+	selectedPrimes = primesToMap(selectedPrimes)
+	for _, prime := range cipherPrimes {
+		plaintext.WriteRune(selectedPrimes[prime])
+	}
 	return plaintext.String()
-}
-
-func solution(n int, cipertext []int) string {
-	primes := eratosthenes(n)
-	var start = 0
-	var end = 25
-
-	for i := 0; i < len(primes)-25; i++ {
-		selectedPrimes := primes[start+i : end+i]
-		plaintext := findPlaintext(selectedPrimes, cipertext)
-		if plaintext != "" {
-			return plaintext
-		}
-	}
-	return ""
 }
 
 func main() {
@@ -105,12 +116,12 @@ func main() {
 	for testCase := 1; testCase <= testCases; testCase++ {
 		var n, l int
 		fmt.Scan(&n, &l)
-		cipertext := make([]int, l)
-		for i := range cipertext {
-			fmt.Scan(&cipertext[i])
+		ciphertext := make([]int, l)
+		for i := range ciphertext {
+			fmt.Scan(&ciphertext[i])
 		}
 
-		plaintext := solution(n, cipertext)
+		plaintext := solution(n, ciphertext)
 
 		fmt.Printf("Case #%d: %s\n", testCase, plaintext)
 	}
